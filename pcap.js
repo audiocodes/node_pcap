@@ -3,7 +3,7 @@ const binding          = require("./out/pcap_binding");
 const { decode }       = require("./decode");
 const tcp_tracker      = require("./tcp_tracker");
 const DNSCache         = require("./dns_cache");
-const timers           = require("timers");
+const { setImmediate } = require("timers/promises");
 const { Buffer }       = require("buffer");
 const process          = require("process");
 
@@ -24,6 +24,7 @@ class PcapSession extends EventEmitter {
         this.options.filter ||= "";
         this.options.outfile ||= "";
         this.options.promiscuous ??= true;
+        this.options.yield_after_packets ??= 1000;
 
         this.link_type = null;
         this.opened = null;
@@ -97,15 +98,20 @@ class PcapSession extends EventEmitter {
             this.session.start_polling();
             process.nextTick(this.session.read_callback); // kickstart to prevent races
         } else {
-            timers.setImmediate(() => {
-                var packets = 0;
-                do {
-                    packets = this.session.dispatch(this.buf, this.header);
-                } while (packets > 0);
+            (async () => {
+                const packets_to_yield = this.options.yield_after_packets;
+                await setImmediate();
+                for (let count = 1; ; ++count) {
+                    if (packets_to_yield && count % packets_to_yield === 0)
+                        await setImmediate();
+                    const packets = this.session.dispatch(this.buf, this.header);
+                    if (packets <= 0)
+                        break;
+                };
                 this.emit("end");
                 this.emit("complete");
                 this.close();
-            });
+            })();
         }
     }
     on_packet_ready() {
