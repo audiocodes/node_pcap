@@ -385,8 +385,10 @@ void PcapSession::FinalizeClose(PcapSession * session) {
     }
 
 #ifndef _WIN32
-    pcap_close(session->pcap_handle);
-    session->pcap_handle = NULL;
+    if (session->pcap_handle) {
+        pcap_close(session->pcap_handle);
+        session->pcap_handle = NULL;
+    }
 #endif
 
     session->packet_ready_cb.Reset();
