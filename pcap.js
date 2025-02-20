@@ -18,17 +18,12 @@ exports.warningHandler = function warningHandler(x) {
 };
 
 class PcapSession extends EventEmitter {
-    constructor(is_live, device_name, filter, buffer_size, snap_length, outfile, is_monitor, buffer_timeout, promiscuous) {
+    constructor(options) {
         super();
-        this.is_live = is_live;
-        this.device_name = device_name;
-        this.filter = filter || "";
-        this.buffer_size = buffer_size;
-        this.snap_length = snap_length;
-        this.outfile = outfile || "";
-        this.is_monitor = Boolean(is_monitor);
-        this.buffer_timeout = buffer_timeout;
-        this.promiscuous = typeof promiscuous === 'undefined' ? true : promiscuous;
+        this.options = {...options};
+        this.options.filter ||= "";
+        this.options.outfile ||= "";
+        this.options.promiscuous ??= true;
 
         this.link_type = null;
         this.opened = null;
@@ -39,34 +34,56 @@ class PcapSession extends EventEmitter {
 
         this.session = new binding.PcapSession();
 
-        if (typeof this.buffer_size === "number" && !isNaN(this.buffer_size)) {
-            this.buffer_size = Math.round(this.buffer_size);
+        if (typeof this.options.buffer_size === "number" && !isNaN(this.options.buffer_size)) {
+            this.options.buffer_size = Math.round(this.options.buffer_size);
         } else {
-            this.buffer_size = 10 * 1024 * 1024; // Default buffer size is 10MB
+            this.options.buffer_size = 10 * 1024 * 1024; // Default buffer size is 10MB
         }
 
-        if (typeof this.snap_length === "number" && !isNaN(this.snap_length)) {
-            this.snap_length = Math.round(this.snap_length);
+        if (typeof this.options.snap_length === "number" && !isNaN(this.options.snap_length)) {
+            this.options.snap_length = Math.round(this.options.snap_length);
         } else {
-            this.snap_length = 65535; // Default snap length is 65535
+            this.options.snap_length = 65535; // Default snap length is 65535
         }
 
-        if (typeof this.buffer_timeout === "number" && !isNaN(this.buffer_timeout)) {
-            this.buffer_timeout = Math.round(this.buffer_timeout);
+        if (typeof this.options.buffer_timeout === "number" && !isNaN(this.options.buffer_timeout)) {
+            this.options.buffer_timeout = Math.round(this.options.buffer_timeout);
         } else {
-            this.buffer_timeout = 1000; // Default buffer timeout is 1s
+            this.options.buffer_timeout = 1000; // Default buffer timeout is 1s
         }
 
+        const is_live = !options.path;
         const packet_ready = this.on_packet_ready.bind(this);
-        if (this.is_live) {
-            this.device_name = this.device_name || binding.default_device();
-            this.link_type = this.session.open_live(this.device_name, this.filter, this.buffer_size, this.snap_length, this.outfile, packet_ready, this.is_monitor, this.buffer_timeout, exports.warningHandler, this.promiscuous);
+        if (is_live) {
+            this.link_type = this.session.open_live(
+                this.options.device || binding.default_device(),
+                this.options.filter,
+                this.options.buffer_size,
+                this.options.snap_length,
+                this.outfile,
+                packet_ready,
+                this.options.monitor,
+                this.options.buffer_timeout,
+                exports.warningHandler,
+                this.options.promiscuous
+            );
         } else {
-            this.link_type = this.session.open_offline(this.device_name, this.filter, this.buffer_size, this.snap_length, this.outfile, packet_ready, this.is_monitor, this.buffer_timeout, exports.warningHandler, this.promiscuous);
+            this.link_type = this.session.open_offline(
+                this.options.path,
+                this.options.filter,
+                this.options.buffer_size,
+                this.options.snap_length,
+                this.outfile,
+                packet_ready,
+                this.options.monitor,
+                this.options.buffer_timeout,
+                exports.warningHandler,
+                this.options.promiscuous
+            );
         }
 
         this.opened = true;
-        this.buf = Buffer.alloc(this.snap_length);
+        this.buf = Buffer.alloc(this.options.snap_length);
         this.header = Buffer.alloc(16);
 
         if (is_live) {
@@ -133,11 +150,18 @@ exports.Pcap = PcapSession;
 exports.PcapSession = PcapSession;
 
 exports.createSession = function (device, options) {
-    options = options || {};
-    return new PcapSession(true, device, options.filter, options.buffer_size, options.snap_length, null, options.monitor, options.buffer_timeout, options.promiscuous);
+    options = {
+        device,
+        ...options
+    };
+    return new PcapSession(options);
 };
 
 exports.createOfflineSession = function (path, options) {
-    options = options || {};
-    return new PcapSession(false, path, options.filter, 0, null, null);
+    options = {
+        path,
+        buffer_size: 0,
+        ...options
+    };
+    return new PcapSession(options);
 };
