@@ -1,9 +1,9 @@
-FROM node:22-alpine3.21 AS build
+FROM node:24-alpine3.22 AS build
 WORKDIR /pcap
 RUN apk add g++ libpcap-dev make python3
 COPY . .
 RUN npm ci --ignore-scripts
-RUN MAKEFLAGS=-j$(nproc) npx -y prebuild
+RUN MAKEFLAGS=-j$(nproc) npx -y @audc/prebuild
 
 FROM scratch
 COPY --from=build /pcap/prebuilds .

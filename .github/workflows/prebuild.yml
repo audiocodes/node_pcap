@@ -15,9 +15,9 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Use nodejs
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: latest
           registry-url: 'https://registry.npmjs.org'
@@ -29,20 +29,22 @@ jobs:
         shell: bash
       - name: Add msbuild to PATH
         if: matrix.os == 'windows'
-        uses: microsoft/setup-msbuild@v1.3
+        uses: microsoft/setup-msbuild@v2
       - name: Install node-gyp
         if: matrix.os == 'windows-latest'
         run: |
           npm install --global node-gyp@latest
       - name: Dependencies
         run: |
-          npm install --ignore-scripts
+          npm ci --ignore-scripts
       - name: Build
+        # npm cache clean to workaround ECOMPROMISED error on Windows
         run: |
-          npx -y prebuild
+          npm cache clean --force
+          npx -y @audc/prebuild
       - name: Upload
         run: |
-          npx -y prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
+          npx -y @audc/prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
         env:
           MAKEFLAGS: -j4
       - name: Publish
@@ -61,16 +63,14 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Use nodejs
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: latest
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
       - name: Build
         run: |
-          docker buildx build . -f Dockerfile.${{ matrix.os }} --output prebuilds
+          docker build . -f Dockerfile.${{ matrix.os }} --output prebuilds
       - name: Upload
         run: |
-          npx -y prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
+          npx -y @audc/prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}

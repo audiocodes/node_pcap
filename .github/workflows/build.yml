@@ -9,12 +9,12 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
-        node: [ 18, 20, 22 ]
+        node: [ 20, 22, 24 ]
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Use Node.js ${{ matrix.node }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
       - name: Install dependencies on Linux
@@ -31,7 +31,7 @@ jobs:
         shell: bash
       - name: Add msbuild to PATH
         if: matrix.os == 'windows'
-        uses: microsoft/setup-msbuild@v1.3
+        uses: microsoft/setup-msbuild@v2
       - name: Install node-gyp
         if: matrix.os == 'windows-latest'
         run: |
@@ -49,11 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ 18, 20, 22 ]
+        node: [ 20, 22, 24 ]
       fail-fast: false
     container: node:${{ matrix.node }}-alpine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: install build deps
         run: |
           apk add g++ libpcap-dev make python3
