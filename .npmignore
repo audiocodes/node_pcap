@@ -8,7 +8,6 @@ spec/
 .vscode/
 .dockerignore
 .ncurc.js
-.travis.yml
 Dockerfile*
 Gruntfile.js
 eslint.config.mjs

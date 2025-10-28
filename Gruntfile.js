@@ -21,23 +21,11 @@ module.exports = function(grunt) {
                 }
             }
         },
-        coveralls: {
-            options: {
-                force: true
-            },
-            src: {
-                src: "coverage/lcov.info"
-            }
-        },
     });
 
-    grunt.loadNpmTasks("grunt-coveralls");
     grunt.loadNpmTasks("grunt-mocha-test");
     grunt.loadNpmTasks("grunt-eslint");
     grunt.loadNpmTasks("grunt-mocha-istanbul");
-
-    //The travis ci build
-    grunt.registerTask("travis", ["eslint", "mocha_istanbul:coverage", "coveralls:src"]);
 
     //Check code coverage with grunt cover
     grunt.registerTask("cover", ["mocha_istanbul:coverage"]);
