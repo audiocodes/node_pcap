@@ -8,7 +8,7 @@ RUN apt-get update && \
   python3
 COPY . .
 RUN npm ci --ignore-scripts
-RUN MAKEFLAGS=-j$(nproc) npx -y @audc/prebuild
+RUN MAKEFLAGS=-j$(nproc) npm run prebuild
 
 FROM scratch
 COPY --from=build /pcap/prebuilds .

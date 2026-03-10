@@ -1,10 +1,8 @@
 build/
 examples/
 out/
-prebuilds/
 spec/
 .github/
-.prebuildrc
 .vscode/
 .dockerignore
 .ncurc.js

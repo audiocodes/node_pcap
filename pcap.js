@@ -1,5 +1,5 @@
 const { EventEmitter } = require("events");
-const binding          = require("./out/pcap_binding");
+const binding          = require("node-gyp-build")(__dirname);
 const { decode }       = require("./decode");
 const tcp_tracker      = require("./tcp_tracker");
 const DNSCache         = require("./dns_cache");

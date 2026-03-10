@@ -12,15 +12,12 @@ jobs:
         os: [ macos, windows ]
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}-latest
-    permissions:
-      id-token: write
     steps:
       - uses: actions/checkout@v6
       - name: Use nodejs
         uses: actions/setup-node@v6
         with:
           node-version: latest
-          registry-url: 'https://registry.npmjs.org'
       - name: Install dependencies
         if: matrix.os == 'macos'
         run: |
@@ -41,17 +38,14 @@ jobs:
         # npm cache clean to workaround ECOMPROMISED error on Windows
         run: |
           npm cache clean --force
-          npx -y @audc/prebuild
-      - name: Upload
-        run: |
-          npx -y @audc/prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
-        env:
-          MAKEFLAGS: -j4
-      - name: Publish
-        if: matrix.os == 'macos'
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm run prebuild
+      - name: Upload prebuild artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: prebuilds-${{ matrix.os }}
+          path: prebuilds/
+          if-no-files-found: error
+          retention-days: 1
 
   prebuild-linux:
     strategy:
@@ -60,8 +54,6 @@ jobs:
         os: [ debian, alpine ]
     name: ${{ matrix.os }}-${{ matrix.arch }}
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
-    permissions:
-      id-token: write
     steps:
       - uses: actions/checkout@v6
       - name: Use nodejs
@@ -71,6 +63,32 @@ jobs:
       - name: Build
         run: |
           docker build . -f Dockerfile.${{ matrix.os }} --output prebuilds
-      - name: Upload
-        run: |
-          npx -y @audc/prebuild --upload-all ${{ secrets.UPLOAD_TOKEN }}
+      - name: Upload prebuild artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}
+          path: prebuilds/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: publish
+    needs: [ prebuild, prebuild-linux ]
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Use nodejs
+        uses: actions/setup-node@v6
+        with:
+          node-version: latest
+          registry-url: 'https://registry.npmjs.org'
+      - name: Download prebuild artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: prebuilds-*
+          path: prebuilds
+          merge-multiple: true
+      - name: Publish
+        run: npm publish --access public

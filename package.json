@@ -17,7 +17,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "install": "prebuild-install || (node-gyp rebuild --release -j max && node-gyp clean)",
+    "install": "node-gyp-build || (node-gyp rebuild --release -j max && node-gyp clean)",
+    "prebuild": "prebuildify --napi --strip",
     "rebuild": "node-gyp rebuild --release -j max",
     "test": "grunt"
   },
@@ -37,11 +38,12 @@
     "istanbul": "^0.4.5",
     "mocha": "^11.7.5",
     "mocha-sinon": "^2.1.2",
+    "prebuildify": "^6.0.1",
     "should": "^13.2.3",
     "sinon": "^21.0.2"
   },
   "dependencies": {
     "node-addon-api": "^8.6.0",
-    "prebuild-install": "^7.1.3"
+    "node-gyp-build": "^4.8.4"
   }
 }
