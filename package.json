@@ -1,6 +1,6 @@
 {
   "name": "@audc/pcap",
-  "version": "4.0.18",
+  "version": "4.1.0",
   "description": "raw packet capture, decoding, and analysis",
   "author": "Matt Ranney <mjr@ranney.com>",
   "license": "MIT",
