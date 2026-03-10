@@ -13,12 +13,10 @@
 
 #include "pcap_session.h"
 
-using namespace v8;
-
 #ifndef _WIN32
 // Helper method, convert a sockaddr* (AF_INET or AF_INET6) to a string, and set it as the property
 // named 'key' in the Address object you pass in.
-static void SetAddrStringHelper(const char* key, sockaddr *addr, Local<Object> Address){
+static void SetAddrStringHelper(const char* key, sockaddr *addr, Napi::Object& Address){
   if(key && addr){
     char dst_addr[INET6_ADDRSTRLEN + 1] = {0};
     char* src = 0;
@@ -34,72 +32,75 @@ static void SetAddrStringHelper(const char* key, sockaddr *addr, Local<Object> A
     }
     const char* address = inet_ntop(addr->sa_family, src, dst_addr, size);
     if(address){
-        Nan::Set(Address, Nan::New(key).ToLocalChecked(), Nan::New(address).ToLocalChecked());
+        Address.Set(key, Napi::String::New(Address.Env(), address));
     }
   }
 }
 #endif
 
-NAN_METHOD(FindAllDevs)
+Napi::Value FindAllDevs(const Napi::CallbackInfo& info)
 {
-    Nan::HandleScope scope;
+    Napi::Env env = info.Env();
 
 #ifdef _WIN32
-    Nan::ThrowError("Not supported on Windows");
+    Napi::Error::New(env, "Not supported on Windows").ThrowAsJavaScriptException();
+    return env.Undefined();
 #else
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_if_t *alldevs, *cur_dev;
 
     if (pcap_findalldevs(&alldevs, errbuf) == -1 || alldevs == NULL) {
-        Nan::ThrowTypeError(errbuf);
-        return;
+        Napi::TypeError::New(env, errbuf).ThrowAsJavaScriptException();
+        return env.Undefined();
     }
 
-    Local<Array> DevsArray = Nan::New<Array>();
+    Napi::Array DevsArray = Napi::Array::New(env);
 
     int i = 0;
     for (cur_dev = alldevs ; cur_dev != NULL ; cur_dev = cur_dev->next, i++) {
-        Local<Object> Dev = Nan::New<Object>();
+        Napi::Object Dev = Napi::Object::New(env);
 
-        Nan::Set(Dev, Nan::New("name").ToLocalChecked(), Nan::New(cur_dev->name).ToLocalChecked());
+        Dev.Set("name", Napi::String::New(env, cur_dev->name));
         if (cur_dev->description != NULL) {
-            Nan::Set(Dev, Nan::New("description").ToLocalChecked(), Nan::New(cur_dev->description).ToLocalChecked());
+            Dev.Set("description", Napi::String::New(env, cur_dev->description));
         }
-        Local<Array> AddrArray = Nan::New<Array>();
+
+        Napi::Array AddrArray = Napi::Array::New(env);
         int j = 0;
         for (pcap_addr_t *cur_addr = cur_dev->addresses ; cur_addr != NULL ; cur_addr = cur_addr->next, j++) {
           if (cur_addr->addr){
               int af = cur_addr->addr->sa_family;
               if(af == AF_INET || af == AF_INET6){
-                Local<Object> Address = Nan::New<Object>();
+                Napi::Object Address = Napi::Object::New(env);
                 SetAddrStringHelper("addr", cur_addr->addr, Address);
                 SetAddrStringHelper("netmask", cur_addr->netmask, Address);
                 SetAddrStringHelper("broadaddr", cur_addr->broadaddr, Address);
                 SetAddrStringHelper("dstaddr", cur_addr->dstaddr, Address);
-                Nan::Set(AddrArray, Nan::New<Integer>(j), Address);
+                AddrArray.Set(j, Address);
               }
            }
         }
 
-        Nan::Set(Dev, Nan::New("addresses").ToLocalChecked(), AddrArray);
+        Dev.Set("addresses", AddrArray);
 
         if (cur_dev->flags & PCAP_IF_LOOPBACK) {
-            Nan::Set(Dev, Nan::New("flags").ToLocalChecked(), Nan::New("PCAP_IF_LOOPBACK").ToLocalChecked());
+            Dev.Set("flags", Napi::String::New(env, "PCAP_IF_LOOPBACK"));
         }
 
-        Nan::Set(DevsArray, Nan::New<Integer>(i), Dev);
+        DevsArray.Set(i, Dev);
     }
 
     pcap_freealldevs(alldevs);
-    info.GetReturnValue().Set(DevsArray);
+    return DevsArray;
 #endif
 }
 
-NAN_METHOD(DefaultDevice)
+Napi::Value DefaultDevice(const Napi::CallbackInfo& info)
 {
-    Nan::HandleScope scope;
+    Napi::Env env = info.Env();
 #ifdef _WIN32
-    Nan::ThrowError("Not supported on Windows");
+    Napi::Error::New(env, "Not supported on Windows").ThrowAsJavaScriptException();
+    return env.Undefined();
 #else
     char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -109,14 +110,16 @@ NAN_METHOD(DefaultDevice)
     bool found = false;
 
     if (pcap_findalldevs(&alldevs, errbuf) == -1) {
-      Nan::ThrowError(errbuf);
-      return;
+      Napi::Error::New(env, errbuf).ThrowAsJavaScriptException();
+      return env.Undefined();
     }
 
     if (alldevs == NULL) {
-      Nan::ThrowError("pcap_findalldevs didn't find any devs");
-      return;
+      Napi::Error::New(env, "pcap_findalldevs didn't find any devs").ThrowAsJavaScriptException();
+      return env.Undefined();
     }
+
+    Napi::Value result = env.Undefined();
 
     for (dev = alldevs; dev != NULL; dev = dev->next) {
         if (dev->addresses != NULL && !(dev->flags & PCAP_IF_LOOPBACK)) {
@@ -124,7 +127,7 @@ NAN_METHOD(DefaultDevice)
                 // TODO - include IPv6 addresses in DefaultDevice guess
                 // if (addr->addr->sa_family == AF_INET || addr->addr->sa_family == AF_INET6) {
                 if (addr->addr->sa_family == AF_INET) {
-                    info.GetReturnValue().Set(Nan::New(dev->name).ToLocalChecked());
+                    result = Napi::String::New(env, dev->name);
                     found = true;
                     break;
                 }
@@ -137,26 +140,28 @@ NAN_METHOD(DefaultDevice)
     }
 
     pcap_freealldevs(alldevs);
+    return result;
 #endif
 }
 
-NAN_METHOD(LibVersion)
+Napi::Value LibVersion(const Napi::CallbackInfo& info)
 {
 #ifdef _WIN32
-    info.GetReturnValue().Set(Nan::New("libpcap version 1.10.5 (dummy for Windows)").ToLocalChecked());
+    return Napi::String::New(info.Env(), "libpcap version 1.10.5 (dummy for Windows)");
 #else
-    info.GetReturnValue().Set(Nan::New(pcap_lib_version()).ToLocalChecked());
+    return Napi::String::New(info.Env(), pcap_lib_version());
 #endif
 }
 
-static void Initialize(Local<Object> exports, v8::Local<v8::Value>, void*)
+Napi::Object Initialize(Napi::Env env, Napi::Object exports)
 {
-    Nan::HandleScope scope;
-    PcapSession::Init(exports);
+    PcapSession::Init(env, exports);
 
-    Nan::Set(exports, Nan::New("findalldevs").ToLocalChecked(), Nan::New<FunctionTemplate>(FindAllDevs)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked());
-    Nan::Set(exports, Nan::New("default_device").ToLocalChecked(), Nan::New<FunctionTemplate>(DefaultDevice)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked());
-    Nan::Set(exports, Nan::New("lib_version").ToLocalChecked(), Nan::New<FunctionTemplate>(LibVersion)->GetFunction(Nan::GetCurrentContext()).ToLocalChecked());
+    exports.Set("findalldevs", Napi::Function::New(env, FindAllDevs));
+    exports.Set("default_device", Napi::Function::New(env, DefaultDevice));
+    exports.Set("lib_version", Napi::Function::New(env, LibVersion));
+
+    return exports;
 }
 
-NODE_MODULE(pcap_binding, Initialize)
+NODE_API_MODULE(pcap_binding, Initialize)
