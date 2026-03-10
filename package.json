@@ -14,7 +14,7 @@
     "url": "https://github.com/audiocodes/node_pcap"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "install": "node-gyp-build || (node-gyp rebuild --release -j max && node-gyp clean)",
