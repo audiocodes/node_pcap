@@ -8,6 +8,7 @@ class HeaderExtension {
   decode(raw_packet, offset) {
     var originalOffset = offset;
     this.nextHeader = raw_packet[offset++];
+    // eslint-disable-next-line no-useless-assignment
     this.headerLength = (raw_packet[offset++] + 1) * 8;
 
     offset = originalOffset + this.headerLength;

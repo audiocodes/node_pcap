@@ -56,7 +56,7 @@ class IPv4 {
     }
     // http://en.wikipedia.org/wiki/IPv4
     decode(raw_packet, offset) {
-        var orig_offset = offset;
+        const orig_offset = offset;
 
         this.version = (raw_packet[offset] & 0xf0) >> 4;
         this.headerLength = (raw_packet[offset] & 0x0f) << 2;
@@ -89,6 +89,7 @@ class IPv4 {
         offset += 4;
 
         this.daddr = new IPv4Addr(this.emitter).decode(raw_packet, offset);
+        // eslint-disable-next-line no-useless-assignment
         offset += 4;
 
         // TODO - parse IP "options" if header_length > 5
