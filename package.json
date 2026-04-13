@@ -18,7 +18,7 @@
   },
   "scripts": {
     "install": "node-gyp-build || (node-gyp rebuild --release -j max && node-gyp clean)",
-    "prebuild": "prebuildify --napi --strip",
+    "prebuild": "prebuildify --napi --strip --tag-libc",
     "rebuild": "node-gyp rebuild --release -j max",
     "test": "grunt"
   },
